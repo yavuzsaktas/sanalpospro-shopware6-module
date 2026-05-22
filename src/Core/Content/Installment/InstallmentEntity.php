@@ -14,19 +14,19 @@ class InstallmentEntity extends Entity
     use EntityIdTrait;
 
     /** Issuing bank name (maps to bank_name column) */
-    protected string $bankName;
+    protected $bankName;
 
     /** Card type e.g. 'visa', 'mastercard' (maps to card_type column) */
-    protected ?string $cardType = null;
+    protected $cardType = null;
 
     /** Number of installments e.g. 3, 6, 9, 12 (maps to installment_count column) */
-    protected int $installmentCount;
+    protected $installmentCount;
 
     /** Interest / surcharge rate in percent (maps to interest_rate column) */
-    protected float $interestRate = 0.00;
+    protected $interestRate = 0.00;
 
     /** Whether this installment plan is currently active (maps to is_active column) */
-    protected bool $isActive = true;
+    protected $isActive = true;
 
     // -------------------------------------------------------------------------
     // Getters & Setters
@@ -73,6 +73,11 @@ class InstallmentEntity extends Entity
     }
 
     public function isActive(): bool
+    {
+        return $this->isActive;
+    }
+
+    public function getIsActive(): bool
     {
         return $this->isActive;
     }

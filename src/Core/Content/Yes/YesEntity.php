@@ -9,11 +9,11 @@ class YesEntity extends Entity
 {
     use EntityIdTrait;
 
-    protected ?string $name;
+    protected $name = null;
 
-    protected ?string $description;
+    protected $description = null;
 
-    protected bool $active;
+    protected $active = false;
 
     public function getName(): ?string
     {

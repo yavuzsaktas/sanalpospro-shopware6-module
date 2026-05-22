@@ -11,8 +11,11 @@ use SanalposproPayment\Service\SanalPosProPaymentHandler;
 
 class PaymentMethodInstaller
 {
-    private EntityRepository $paymentMethodRepository;
-    private PluginIdProvider $pluginIdProvider;
+    /** @var EntityRepository */
+    private $paymentMethodRepository;
+
+    /** @var PluginIdProvider */
+    private $pluginIdProvider;
 
     public function __construct(EntityRepository $paymentMethodRepository, PluginIdProvider $pluginIdProvider)
     {
@@ -27,7 +30,7 @@ class PaymentMethodInstaller
             return; // Already installed
         }
 
-        $pluginId = $this->pluginIdProvider->getPluginIdByBaseClass(\SanalposproPayment\SanalPosPro::class, $context);
+        $pluginId = $this->pluginIdProvider->getPluginIdByBaseClass(\SanalposproPayment\EticsoftSanalPosPro::class, $context);
 
         $paymentData = [
             'handlerIdentifier' => SanalPosProPaymentHandler::class,

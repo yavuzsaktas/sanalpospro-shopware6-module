@@ -21,17 +21,26 @@ class SanalPosProController extends StorefrontController
     private const CONFIG_PUBLIC_KEY      = 'SanalPosPro.config.publicApiKey';
     private const CONFIG_SECRET_KEY      = 'SanalPosPro.config.secretApiKey';
 
-    public function __construct(
-        private readonly SystemConfigService $systemConfigService,
-        private readonly HttpClientInterface $httpClient,
-        private readonly LoggerInterface $logger,
-    ) {}
+    /** @var SystemConfigService */
+    private $systemConfigService;
 
-    #[Route(
-        path: '/sanalpospro/iframe/{transactionId}',
-        name: 'frontend.sanalpospro.iframe',
-        methods: ['GET']
-    )]
+    /** @var HttpClientInterface */
+    private $httpClient;
+
+    /** @var LoggerInterface */
+    private $logger;
+
+    public function __construct(
+        SystemConfigService $systemConfigService,
+        HttpClientInterface $httpClient,
+        LoggerInterface $logger
+    ) {
+        $this->systemConfigService = $systemConfigService;
+        $this->httpClient = $httpClient;
+        $this->logger = $logger;
+    }
+
+    #[Route(path: '/sanalpospro/iframe/{transactionId}', name: 'frontend.sanalpospro.iframe', methods: ['GET'])]
     public function iframe(string $transactionId, Request $request): Response
     {
         if ($transactionId === '') {
@@ -41,7 +50,7 @@ class SanalPosProController extends StorefrontController
         $returnUrl   = (string) $request->query->get('returnUrl', '');
         $publicApiKey = (string) ($this->systemConfigService->get('SanalPosPro.config.publicApiKey') ?? '');
 
-        return $this->renderStorefront('@SanalPosPro/storefront/page/checkout/iframe.html.twig', [
+        return $this->renderStorefront('@EticsoftSanalPosPro/storefront/page/checkout/iframe.html.twig', [
             'transactionId' => $transactionId,
             'returnUrl'     => $returnUrl,
             'publicApiKey'  => $publicApiKey,
@@ -49,11 +58,7 @@ class SanalPosProController extends StorefrontController
         ]);
     }
 
-    #[Route(
-        path: '/sanalpospro/callback',
-        name: 'frontend.sanalpospro.callback',
-        methods: ['GET']
-    )]
+    #[Route(path: '/sanalpospro/callback', name: 'frontend.sanalpospro.callback', methods: ['GET'])]
     public function callback(Request $request): Response
     {
         // PayThor appends &p_id=<process_token> on full-page (window.top) redirects.
@@ -145,7 +150,7 @@ class SanalPosProController extends StorefrontController
         // The _sw_payment_token in $ret authenticates the finalization; the
         // p_id is passed along so finalize() can do its own verification if needed.
         if ($ret !== '') {
-            $separator = str_contains($ret, '?') ? '&' : '?';
+            $separator = strpos($ret, '?') !== false ? '&' : '?';
             return new RedirectResponse($ret . $separator . 'p_id=' . rawurlencode($pId));
         }
 

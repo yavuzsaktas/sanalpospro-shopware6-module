@@ -22,6 +22,21 @@ class WebhookController extends AbstractController
     private const SIGNATURE_HEADER = 'X-Paythor-Signature';
     private const CONFIG_WEBHOOK_SECRET = 'SanalPosPro.config.webhookSecret';
 
+    /** @var SystemConfigService */
+    private $systemConfigService;
+
+    /** @var EntityRepository */
+    private $webhookLogRepository;
+
+    /** @var OrderTransactionStateHandler */
+    private $transactionStateHandler;
+
+    /** @var Connection */
+    private $connection;
+
+    /** @var LoggerInterface */
+    private $logger;
+
     /**
      * Status normalization map — matches Notify.php exactly.
      * Keys are lowercase status strings; values are canonical categories.
@@ -58,20 +73,20 @@ class WebhookController extends AbstractController
     ];
 
     public function __construct(
-        private readonly SystemConfigService $systemConfigService,
-        private readonly EntityRepository $webhookLogRepository,
-        private readonly OrderTransactionStateHandler $transactionStateHandler,
-        private readonly Connection $connection,
-        private readonly LoggerInterface $logger,
+        SystemConfigService $systemConfigService,
+        EntityRepository $webhookLogRepository,
+        OrderTransactionStateHandler $transactionStateHandler,
+        Connection $connection,
+        LoggerInterface $logger
     ) {
+        $this->systemConfigService = $systemConfigService;
+        $this->webhookLogRepository = $webhookLogRepository;
+        $this->transactionStateHandler = $transactionStateHandler;
+        $this->connection = $connection;
+        $this->logger = $logger;
     }
 
-    #[Route(
-        path: '/api/sanalpospro/webhook',
-        name: 'api.sanalpospro.webhook',
-        methods: ['POST'],
-        defaults: ['auth_required' => false, 'csrf_protected' => false],
-    )]
+    #[Route(path: '/api/sanalpospro/webhook', name: 'api.sanalpospro.webhook', methods: ['POST'], defaults: ['auth_required' => false, 'csrf_protected' => false])]
     public function handle(Request $request, Context $context): JsonResponse
     {
         $rawBody   = (string) $request->getContent();
@@ -87,7 +102,7 @@ class WebhookController extends AbstractController
 
             return new JsonResponse(
                 ['success' => false, 'message' => 'Invalid signature.'],
-                Response::HTTP_UNAUTHORIZED,
+                Response::HTTP_UNAUTHORIZED
             );
         }
 
@@ -102,7 +117,7 @@ class WebhookController extends AbstractController
 
             return new JsonResponse(
                 ['success' => false, 'message' => 'Malformed payload.'],
-                Response::HTTP_BAD_REQUEST,
+                Response::HTTP_BAD_REQUEST
             );
         }
 
@@ -115,7 +130,7 @@ class WebhookController extends AbstractController
         if ($merchantOrderId === '' || $eventStatus === '') {
             return new JsonResponse(
                 ['success' => false, 'message' => 'Missing required fields.'],
-                Response::HTTP_BAD_REQUEST,
+                Response::HTTP_BAD_REQUEST
             );
         }
 
@@ -132,7 +147,7 @@ class WebhookController extends AbstractController
 
             return new JsonResponse(
                 ['success' => true, 'message' => 'Order transaction not found, ignored.'],
-                Response::HTTP_OK,
+                Response::HTTP_OK
             );
         }
 
@@ -142,7 +157,7 @@ class WebhookController extends AbstractController
 
             return new JsonResponse(
                 ['success' => true, 'message' => 'Already finalized.'],
-                Response::HTTP_OK,
+                Response::HTTP_OK
             );
         }
 
@@ -192,7 +207,7 @@ class WebhookController extends AbstractController
 
             return new JsonResponse(
                 ['success' => false, 'message' => 'Internal error.'],
-                Response::HTTP_INTERNAL_SERVER_ERROR,
+                Response::HTTP_INTERNAL_SERVER_ERROR
             );
         }
 
@@ -231,15 +246,12 @@ class WebhookController extends AbstractController
     {
         try {
             $result = $this->connection->fetchOne(
-                <<<'SQL'
-                SELECT sms.technical_name
-                FROM order_transaction ot
-                INNER JOIN state_machine_state sms
-                    ON ot.state_id = sms.id
-                WHERE ot.id = :id
-                LIMIT 1
-                SQL,
-                ['id' => Uuid::fromHexToBytes($orderTransactionId)],
+                'SELECT sms.technical_name '
+                . 'FROM order_transaction ot '
+                . 'INNER JOIN state_machine_state sms ON ot.state_id = sms.id '
+                . 'WHERE ot.id = :id '
+                . 'LIMIT 1',
+                ['id' => Uuid::fromHexToBytes($orderTransactionId)]
             );
 
             return $result !== false ? (string) $result : null;
@@ -260,7 +272,7 @@ class WebhookController extends AbstractController
         string $paythorTxId,
         string $status,
         string $rawPayload,
-        Context $context,
+        Context $context
     ): void {
         try {
             $this->webhookLogRepository->create([

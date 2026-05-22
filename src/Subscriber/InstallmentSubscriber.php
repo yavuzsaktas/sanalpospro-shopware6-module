@@ -19,9 +19,13 @@ class InstallmentSubscriber implements EventSubscriberInterface
         'paraf', 'saglamcard', 'advantage', 'combo', 'miles-smiles',
     ];
 
-    public function __construct(
-        private readonly SystemConfigService $systemConfigService,
-    ) {}
+    /** @var SystemConfigService */
+    private $systemConfigService;
+
+    public function __construct(SystemConfigService $systemConfigService)
+    {
+        $this->systemConfigService = $systemConfigService;
+    }
 
     public static function getSubscribedEvents(): array
     {

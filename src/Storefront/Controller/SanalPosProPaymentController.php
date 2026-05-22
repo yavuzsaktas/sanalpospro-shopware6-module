@@ -12,7 +12,8 @@ use Shopware\Core\Framework\Context;
 #[Route(defaults: ['_routeScope' => ['storefront']])]
 class SanalPosProPaymentController extends StorefrontController
 {
-    private EntityRepository $orderTransactionRepository;
+    /** @var EntityRepository */
+    private $orderTransactionRepository;
 
     public function __construct(EntityRepository $orderTransactionRepository)
     {
@@ -24,7 +25,7 @@ class SanalPosProPaymentController extends StorefrontController
     {
         $returnUrl = $request->query->get('returnUrl');
 
-        return $this->renderStorefront('@SanalPosPro/storefront/page/sanalpospro/payment.html.twig', [
+        return $this->renderStorefront('@EticsoftSanalPosPro/storefront/page/sanalpospro/payment.html.twig', [
             'transactionId' => $transactionId,
             'returnUrl' => $returnUrl
         ]);

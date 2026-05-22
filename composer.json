@@ -5,13 +5,15 @@
     "version": "1.0.0",
     "license": "MIT",
     "require": {
-        "shopware/core": "~6.7.0"
+        "shopware/core": "~6.7.0",
+        "shopware/storefront": "~6.7.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^12.5"
     },
     "extra": {
-        "shopware-plugin-class": "SanalposproPayment\\SanalPosPro",
+        "shopware-plugin-class": "SanalposproPayment\\EticsoftSanalPosPro",
+        "plugin-icon": "src/Resources/config/plugin.png",
         "label": {
             "de-DE": "SanalPosPro",
             "en-GB": "SanalPosPro"

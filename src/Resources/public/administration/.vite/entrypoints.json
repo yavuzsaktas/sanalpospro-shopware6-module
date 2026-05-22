@@ -1,11 +1,11 @@
 {
-  "base": "/bundles/sanalpospro/administration/",
+  "base": "/bundles/eticsoftsanalpospro/administration/",
   "entryPoints": {
-    "sanal-pos-pro": {
+    "eticsoft-sanal-pos-pro": {
       "css": [],
       "dynamic": [],
       "js": [
-        "/bundles/sanalpospro/administration/assets/sanal-pos-pro-DRok1Omq.js"
+        "/bundles/eticsoftsanalpospro/administration/assets/eticsoft-sanal-pos-pro-DRok1Omq.js"
       ],
       "legacy": false,
       "preload": []

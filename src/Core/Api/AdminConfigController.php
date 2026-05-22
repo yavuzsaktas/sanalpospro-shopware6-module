@@ -23,16 +23,15 @@ class AdminConfigController extends AbstractController
     private const CONFIG_PUBLIC_KEY = 'SanalPosPro.config.publicApiKey';
     private const CONFIG_SECRET_KEY = 'SanalPosPro.config.secretApiKey';
 
-    public function __construct(
-        private readonly SystemConfigService $systemConfigService,
-    ) {}
+    /** @var SystemConfigService */
+    private $systemConfigService;
 
-    #[Route(
-        path: '/api/sanalpospro/admin-config',
-        name: 'api.sanalpospro.admin-config',
-        methods: ['GET'],
-        defaults: ['auth_required' => true],
-    )]
+    public function __construct(SystemConfigService $systemConfigService)
+    {
+        $this->systemConfigService = $systemConfigService;
+    }
+
+    #[Route(path: '/api/sanalpospro/admin-config', name: 'api.sanalpospro.admin-config', methods: ['GET'], defaults: ['auth_required' => true])]
     public function adminConfig(): JsonResponse
     {
         $appId = (int) ($this->systemConfigService->get(self::CONFIG_APP_ID) ?? 0);

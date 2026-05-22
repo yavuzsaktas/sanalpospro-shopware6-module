@@ -13,14 +13,10 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route(defaults: [PlatformRequest::ATTRIBUTE_ROUTE_SCOPE => [StorefrontRouteScope::ID]])]
 class ExampleController extends StorefrontController
 {
-    #[Route(
-        path: '/example',
-        name: 'frontend.example.example',
-        methods: ['GET']
-    )]
+    #[Route(path: '/example', name: 'frontend.example.example', methods: ['GET'])]
     public function showExample(Request $request, SalesChannelContext $context): Response
     {
-        return $this->renderStorefront('@SanalPosPro/storefront/page/example.html.twig', [
+        return $this->renderStorefront('@EticsoftSanalPosPro/storefront/page/example.html.twig', [
             'example' => 'Hello world'
         ]);
     }

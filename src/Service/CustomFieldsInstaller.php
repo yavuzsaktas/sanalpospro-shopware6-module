@@ -13,6 +13,12 @@ class CustomFieldsInstaller
 {
     private const CUSTOM_FIELDSET_NAME = 'swag_example_set';
 
+    /** @var EntityRepository */
+    private $customFieldSetRepository;
+
+    /** @var EntityRepository */
+    private $customFieldSetRelationRepository;
+
     private const CUSTOM_FIELDSET = [
         'name' => self::CUSTOM_FIELDSET_NAME,
         'config' => [
@@ -39,9 +45,11 @@ class CustomFieldsInstaller
     ];
 
     public function __construct(
-        private readonly EntityRepository $customFieldSetRepository,
-        private readonly EntityRepository $customFieldSetRelationRepository
+        EntityRepository $customFieldSetRepository,
+        EntityRepository $customFieldSetRelationRepository
     ) {
+        $this->customFieldSetRepository = $customFieldSetRepository;
+        $this->customFieldSetRelationRepository = $customFieldSetRelationRepository;
     }
 
     public function install(Context $context): void

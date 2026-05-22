@@ -32,7 +32,8 @@ class Migration1710000000InstallmentAndLog extends MigrationStep
                 KEY `idx_webhook_log_status`      (`status`),
                 KEY `idx_webhook_log_created_at`  (`created_at`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-SQL);
+SQL
+        );
 
         // ── Installment ────────────────────────────────────────────────────────
         $connection->executeStatement(<<<'SQL'
@@ -49,7 +50,8 @@ SQL);
                 KEY `idx_installment_bank_name` (`bank_name`),
                 KEY `idx_installment_is_active` (`is_active`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-SQL);
+SQL
+        );
     }
 
     public function updateDestructive(Connection $connection): void

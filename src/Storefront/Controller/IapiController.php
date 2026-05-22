@@ -25,23 +25,40 @@ class IapiController extends StorefrontController
     private const CONFIG_PUBLIC_KEY      = 'SanalPosPro.config.publicApiKey';
     private const CONFIG_SECRET_KEY      = 'SanalPosPro.config.secretApiKey';
 
-    private ?Context $requestContext = null;
-    private string $requestIp        = '127.0.0.1';
-    private string $requestHost      = '';
+    /** @var SystemConfigService */
+    private $systemConfigService;
+
+    /** @var HttpClientInterface */
+    private $httpClient;
+
+    /** @var LoggerInterface */
+    private $logger;
+
+    /** @var EntityRepository */
+    private $orderTransactionRepository;
+
+    /** @var Context|null */
+    private $requestContext = null;
+
+    /** @var string */
+    private $requestIp = '127.0.0.1';
+
+    /** @var string */
+    private $requestHost = '';
 
     public function __construct(
-        private readonly SystemConfigService $systemConfigService,
-        private readonly HttpClientInterface $httpClient,
-        private readonly LoggerInterface $logger,
-        private readonly EntityRepository $orderTransactionRepository,
-    ) {}
+        SystemConfigService $systemConfigService,
+        HttpClientInterface $httpClient,
+        LoggerInterface $logger,
+        EntityRepository $orderTransactionRepository
+    ) {
+        $this->systemConfigService = $systemConfigService;
+        $this->httpClient = $httpClient;
+        $this->logger = $logger;
+        $this->orderTransactionRepository = $orderTransactionRepository;
+    }
 
-    #[Route(
-        path: '/sanalpospro/iapi/index',
-        name: 'frontend.sanalpospro.iapi',
-        defaults: ['csrf_protected' => false, 'XmlHttpRequest' => true],
-        methods: ['POST', 'OPTIONS'],
-    )]
+    #[Route(path: '/sanalpospro/iapi/index', name: 'frontend.sanalpospro.iapi', defaults: ['csrf_protected' => false, 'XmlHttpRequest' => true], methods: ['POST', 'OPTIONS'])]
     public function index(Request $request, Context $context): JsonResponse
     {
         $corsHeaders = [
@@ -75,18 +92,13 @@ class IapiController extends StorefrontController
         return new JsonResponse($this->$method($iapiParams), 200, $corsHeaders);
     }
 
-    #[Route(
-        path: '/sanalpospro/iapi/config',
-        name: 'frontend.sanalpospro.iapi.config',
-        defaults: ['csrf_protected' => false],
-        methods: ['GET'],
-    )]
+    #[Route(path: '/sanalpospro/iapi/config', name: 'frontend.sanalpospro.iapi.config', defaults: ['csrf_protected' => false], methods: ['GET'])]
     public function config(): JsonResponse
     {
         return new JsonResponse(
             ['app_id' => $this->savedAppId()],
             200,
-            ['Access-Control-Allow-Origin' => '*'],
+            ['Access-Control-Allow-Origin' => '*']
         );
     }
 
@@ -186,15 +198,7 @@ class IapiController extends StorefrontController
 
     private function callCheckAccessToken(string $token, string $pub, string $sec): array
     {
-        return $this->callSignedEndpoint(
-            method: 'POST',
-            endpoint: '/check/accesstoken',
-            pub: $pub,
-            sec: $sec,
-            payload: ['accesstoken' => $token],
-            timeout: 10,
-            logContext: 'checkApiKeys'
-        );
+        return $this->callSignedEndpoint('POST', '/check/accesstoken', $pub, $sec, ['accesstoken' => $token], 10, 'checkApiKeys');
     }
 
     private function actionFetchApiKeys(array $params): array
@@ -249,7 +253,7 @@ class IapiController extends StorefrontController
                     }
 
                     $message = strtolower((string) ($data['message'] ?? ''));
-                    if ($message !== '' && !str_contains($message, 'not authorized')) {
+                    if ($message !== '' && !$this->contains($message, 'not authorized')) {
                         return $data;
                     }
                 }
@@ -273,15 +277,7 @@ class IapiController extends StorefrontController
             }
         }
 
-        $data = $this->callSignedEndpoint(
-            method: 'GET',
-            endpoint: '/app/list/all',
-            pub: $pub,
-            sec: $sec,
-            payload: [],
-            timeout: 10,
-            logContext: 'listAllApps'
-        );
+        $data = $this->callSignedEndpoint('GET', '/app/list/all', $pub, $sec, [], 10, 'listAllApps');
 
         if (($data['status'] ?? '') === 'success') {
             return $data;
@@ -291,15 +287,7 @@ class IapiController extends StorefrontController
             $pub = trim((string) ($this->systemConfigService->get(self::CONFIG_PUBLIC_KEY) ?? ''));
             $sec = trim((string) ($this->systemConfigService->get(self::CONFIG_SECRET_KEY) ?? ''));
             if ($pub !== '' && $sec !== '') {
-                $data = $this->callSignedEndpoint(
-                    method: 'GET',
-                    endpoint: '/app/list/all',
-                    pub: $pub,
-                    sec: $sec,
-                    payload: [],
-                    timeout: 10,
-                    logContext: 'listAllAppsRetry'
-                );
+                $data = $this->callSignedEndpoint('GET', '/app/list/all', $pub, $sec, [], 10, 'listAllAppsRetry');
             }
         }
 
@@ -571,9 +559,14 @@ class IapiController extends StorefrontController
     {
         $transactionId = (string) ($params['iapi_transactionId'] ?? '');
         $storeUrl      = rtrim((string) ($params['iapi_storeUrl'] ?? ''), '/');
+        $ctx           = $this->requestContext;
 
         if ($transactionId === '' || $storeUrl === '') {
             return $this->error('transactionId and storeUrl are required.');
+        }
+
+        if ($ctx === null) {
+            return $this->error('Request context is unavailable.');
         }
 
         $pub = (string) ($this->systemConfigService->get(self::CONFIG_PUBLIC_KEY) ?? '');
@@ -602,7 +595,6 @@ class IapiController extends StorefrontController
             $criteria->addAssociation('order.addresses.country');
             $criteria->addAssociation('order.addresses.countryState');
 
-            $ctx      = $this->requestContext ?? Context::createDefaultContext();
             $txEntity = $this->orderTransactionRepository->search($criteria, $ctx)->first();
 
             if ($txEntity !== null) {
@@ -858,12 +850,12 @@ class IapiController extends StorefrontController
             $attemptErrors = [];
 
             $success = $this->trySaveApiKeysFromAppCandidates(
-                preferredApp: $myApp,
-                allApps: $allApps,
-                bearerHeaders: $bearerHeaders,
-                bearerToken: $bearerToken,
-                attemptedIds: $attemptedIds,
-                attemptErrors: $attemptErrors,
+                $myApp,
+                $allApps,
+                $bearerHeaders,
+                $bearerToken,
+                $attemptedIds,
+                $attemptErrors
             );
 
             if ($success !== null) {
@@ -878,12 +870,12 @@ class IapiController extends StorefrontController
             $this->logger->info('SanalPosPro: listMyApps after forced install', ['apps' => $allApps]);
 
             $success = $this->trySaveApiKeysFromAppCandidates(
-                preferredApp: $myApp,
-                allApps: $allApps,
-                bearerHeaders: $bearerHeaders,
-                bearerToken: $bearerToken,
-                attemptedIds: $attemptedIds,
-                attemptErrors: $attemptErrors,
+                $myApp,
+                $allApps,
+                $bearerHeaders,
+                $bearerToken,
+                $attemptedIds,
+                $attemptErrors
             );
 
             if ($success !== null) {
@@ -892,7 +884,13 @@ class IapiController extends StorefrontController
 
             if ($myApp === null) {
                 $appSummary = array_map(
-                    fn($a) => ['id' => $a['id'] ?? '?', 'app_id' => $a['app_id'] ?? '?', 'name' => $a['name'] ?? '?'],
+                    function ($app) {
+                        return [
+                            'id' => $app['id'] ?? '?',
+                            'app_id' => $app['app_id'] ?? '?',
+                            'name' => $app['name'] ?? '?',
+                        ];
+                    },
                     $allApps
                 );
                 return $this->error('App not found after install attempt. Available apps: ' . json_encode($appSummary));
@@ -1063,7 +1061,7 @@ class IapiController extends StorefrontController
             $appId = (int) ($app['app_id'] ?? 0);
             $name  = strtolower((string) ($app['name'] ?? ''));
 
-            if ($appId === self::SHOPWARE_APP_ID_DEFAULT || str_contains($name, 'shopware') || str_contains($name, 'swr')) {
+            if ($appId === self::SHOPWARE_APP_ID_DEFAULT || $this->contains($name, 'shopware') || $this->contains($name, 'swr')) {
                 $candidates[] = $app;
             }
         }
@@ -1104,7 +1102,7 @@ class IapiController extends StorefrontController
         }
 
         $name = strtolower((string) ($app['name'] ?? ''));
-        if (str_contains($name, 'shopware') || str_contains($name, 'swr')) {
+        if ($this->contains($name, 'shopware') || $this->contains($name, 'swr')) {
             $score += 40;
         }
 
@@ -1113,11 +1111,11 @@ class IapiController extends StorefrontController
             $score += 30;
         }
 
-        if ($this->requestHost !== '' && $storeUrl !== '' && str_contains($storeUrl, $this->requestHost)) {
+        if ($this->requestHost !== '' && $storeUrl !== '' && $this->contains($storeUrl, $this->requestHost)) {
             $score += 80;
         }
 
-        if (str_contains($storeUrl, 'localhost') || str_contains($storeUrl, '127.0.0.1')) {
+        if ($this->contains($storeUrl, 'localhost') || $this->contains($storeUrl, '127.0.0.1')) {
             $score += 20;
         }
 
@@ -1151,15 +1149,7 @@ class IapiController extends StorefrontController
     private function discoverAndSaveShopwareAppId(string $token, string $pub, string $sec): void
     {
         try {
-            $data = $this->callSignedEndpoint(
-                method: 'GET',
-                endpoint: '/app/list/all',
-                pub: $pub,
-                sec: $sec,
-                payload: [],
-                timeout: 10,
-                logContext: 'discoverAppId'
-            );
+            $data = $this->callSignedEndpoint('GET', '/app/list/all', $pub, $sec, [], 10, 'discoverAppId');
 
             if (($data['status'] ?? '') !== 'success') {
                 return;
@@ -1168,7 +1158,7 @@ class IapiController extends StorefrontController
             foreach ($data['data'] ?? [] as $app) {
                 $appId = (int) ($app['id'] ?? 0);
                 $name  = strtolower((string) ($app['name'] ?? ''));
-                if ($appId === self::SHOPWARE_APP_ID_DEFAULT || str_contains($name, 'swr') || str_contains($name, 'shopware')) {
+                if ($appId === self::SHOPWARE_APP_ID_DEFAULT || $this->contains($name, 'swr') || $this->contains($name, 'shopware')) {
                     $this->systemConfigService->set(self::CONFIG_APP_ID, $appId);
                     $this->logger->info('SanalPosPro: app ID saved', ['app_id' => $appId]);
                     return;
@@ -1181,15 +1171,7 @@ class IapiController extends StorefrontController
 
     private function callMerchantInfo(string $pub, string $sec): array
     {
-        return $this->callSignedEndpoint(
-            method: 'POST',
-            endpoint: '/merchant/info',
-            pub: $pub,
-            sec: $sec,
-            payload: [],
-            timeout: 10,
-            logContext: 'merchantInfo'
-        );
+        return $this->callSignedEndpoint('POST', '/merchant/info', $pub, $sec, [], 10, 'merchantInfo');
     }
 
     private function callSignedEndpoint(
@@ -1353,8 +1335,8 @@ class IapiController extends StorefrontController
 
             if (
                 $id === self::SHOPWARE_APP_ID_DEFAULT
-                || str_contains($slug, 'swr')
-                || str_contains($slug, 'shopware')
+                || $this->contains($slug, 'swr')
+                || $this->contains($slug, 'shopware')
             ) {
                 $row['name'] = 'Shopware SanalPOS PRO!';
                 $row['platform'] = 'shopware';
@@ -1389,6 +1371,15 @@ class IapiController extends StorefrontController
         $this->systemConfigService->delete(self::CONFIG_APP_ID);
     }
 
+    private function contains(string $haystack, string $needle): bool
+    {
+        if ($needle === '') {
+            return true;
+        }
+
+        return strpos($haystack, $needle) !== false;
+    }
+
     private function isHashErrorResponse(array $data): bool
     {
         if (($data['status'] ?? '') === 'success') {
@@ -1396,7 +1387,7 @@ class IapiController extends StorefrontController
         }
 
         $message = strtolower((string) ($data['message'] ?? ''));
-        return str_contains($message, 'hash') || str_contains($message, 'nonce') || str_contains($message, 'rand');
+        return $this->contains($message, 'hash') || $this->contains($message, 'nonce') || $this->contains($message, 'rand');
     }
 
     private function isMerchantMismatchResponse(array $data): bool
@@ -1406,7 +1397,7 @@ class IapiController extends StorefrontController
         }
 
         $message = strtolower((string) ($data['message'] ?? ''));
-        return str_contains($message, 'mismatch') || str_contains($message, 'merchant');
+        return $this->contains($message, 'mismatch') || $this->contains($message, 'merchant');
     }
 
     private function isTransportErrorResponse(array $data): bool
@@ -1417,11 +1408,11 @@ class IapiController extends StorefrontController
 
         $message = strtolower((string) ($data['message'] ?? ''));
 
-        return str_contains($message, 'request failed:')
-            || str_contains($message, 'could not resolve host')
-            || str_contains($message, 'timed out')
-            || str_contains($message, 'connection refused')
-            || str_contains($message, 'network is unreachable');
+        return $this->contains($message, 'request failed:')
+            || $this->contains($message, 'could not resolve host')
+            || $this->contains($message, 'timed out')
+            || $this->contains($message, 'connection refused')
+            || $this->contains($message, 'network is unreachable');
     }
 
     private function success(string $message, array $data = []): array

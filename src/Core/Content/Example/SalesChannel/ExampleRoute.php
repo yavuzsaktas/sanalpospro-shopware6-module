@@ -13,8 +13,12 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route(defaults: [PlatformRequest::ATTRIBUTE_ROUTE_SCOPE => [StoreApiRouteScope::ID]])]
 class ExampleRoute extends AbstractExampleRoute
 {
-    public function __construct(private readonly EntityRepository $productRepository)
+    /** @var EntityRepository */
+    private $productRepository;
+
+    public function __construct(EntityRepository $productRepository)
     {
+        $this->productRepository = $productRepository;
     }
 
     public function getDecorated(): AbstractExampleRoute
@@ -22,11 +26,7 @@ class ExampleRoute extends AbstractExampleRoute
         throw new DecorationPatternException(self::class);
     }
 
-    #[Route(
-        path: '/store-api/example',
-        name: 'store-api.example.search',
-        methods: ['GET', 'POST']
-    )]
+    #[Route(path: '/store-api/example', name: 'store-api.example.search', methods: ['GET', 'POST'])]
     public function load(Criteria $criteria, SalesChannelContext $context): ExampleRouteResponse
     {
         return new ExampleRouteResponse($this->productRepository->search($criteria, $context->getContext()));

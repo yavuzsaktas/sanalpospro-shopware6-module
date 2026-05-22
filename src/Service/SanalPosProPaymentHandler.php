@@ -17,10 +17,19 @@ use Symfony\Component\Routing\RouterInterface;
 
 class SanalPosProPaymentHandler extends AbstractPaymentHandler
 {
+    /** @var OrderTransactionStateHandler */
+    private $transactionStateHandler;
+
+    /** @var RouterInterface */
+    private $router;
+
     public function __construct(
-        private readonly OrderTransactionStateHandler $transactionStateHandler,
-        private readonly RouterInterface $router,
-    ) {}
+        OrderTransactionStateHandler $transactionStateHandler,
+        RouterInterface $router
+    ) {
+        $this->transactionStateHandler = $transactionStateHandler;
+        $this->router = $router;
+    }
 
     public function supports(PaymentHandlerType $type, string $paymentMethodId, Context $context): bool
     {

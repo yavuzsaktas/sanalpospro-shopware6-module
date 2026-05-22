@@ -12,7 +12,8 @@ use Shopware\Core\Framework\Context;
 #[Route(defaults: ['_routeScope' => ['storefront']])]
 class WebhookController extends StorefrontController
 {
-    private OrderTransactionStateHandler $transactionStateHandler;
+    /** @var OrderTransactionStateHandler */
+    private $transactionStateHandler;
 
     public function __construct(OrderTransactionStateHandler $transactionStateHandler)
     {
